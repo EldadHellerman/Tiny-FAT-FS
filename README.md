@@ -1,5 +1,4 @@
 # File-Systems
-A file system designed to fit in small memories
-
+A collection of file systems.
 
 Created by EH.
