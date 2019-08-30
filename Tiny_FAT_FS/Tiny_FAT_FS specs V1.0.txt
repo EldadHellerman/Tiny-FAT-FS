@@ -20,8 +20,18 @@ FAT ends at page FAT_END and has a minimum of 2 pages.
 
 FAT entries:
 	byte 0	->	indicates the memory size, page size and FAT entry size (hence the number of FAT entries, and its size)
-		[0:2]	->	page size: 8,16,32,64,128,256 and maybe two for mid sized memory... 
-		[3:6]	->	memory size = 2^(value+7) - 128 bytes to 4MiB
+		[0:2]	->	page size:	8		(x=0, 512kiB max, memory size: 32B - 1MiB),
+								16		(x=1, 1MiB max,                64B - 2MiB),
+								32		(x=2, 2MiB max,               128B - 4MiB),
+								64		(x=3, 4MiB max,               256B - 8MiB),
+								128		(x=4, 8MiB max,               512B - 16MiB),
+								************256		(x=5, 16MiB max,              1kiB - 32MiB), //currently not supported because if there are less than 64 pages then data
+																								//size in page is represented by 7 bits - up to 128 bits per page.
+								************512		(x=6, 32MiB max,              2kiB - 64MiB),   //currently not supported so that
+								************1024	(x=7, 64MiB max,              4kiB - 128MiB). //page data size is 1 byte
+		[3:6]	->	memory size = 2^(value+5+x) - 32 bytes to 128MiB.
+					value cant be 15 since this will cause memory size to be 2 times more than what the FAT allows for,
+					so it can be used as an indicator for a future version of the FS.
 		[7]	->	FAT entry size:
 					0 is 1 byte
 					1 is 2 bytes
@@ -36,12 +46,19 @@ FAT entries:
 Entry values 0 and 1 are free because are pages used by FAT, and 2 is free because no page will have the root folder continue it.
 
 Entry values:
-	0	page is free	
-	1	if there isn't another page, but there's less than PAGE_SIZE bytes used in this page,
-		and the last byte in page is used to indicate the amount of bytes that are used.
-	2	if there isn't another page, and all PAGE_SIZE bytes in page are used.
-	3/3-8	free to signal other things, because are used by FAT
-	3-(FAT_END+1)		free to signal other things, because are used by FAT
+	if amount_of_pages <= 64:
+		0		page is free
+		1-63	next page
+		[7]	1 if there isnt another page, then the data size is in bits [0:6]
+		[6] 
+		//////////////////////////////////////////////////		here		///////////////////////////////////////////////////////////////////////////
+	else:
+		0	page is free	
+		1	if there isn't another page, but there's less than PAGE_SIZE bytes used in this page,
+			and the last byte in page is used to indicate the amount of bytes that are used.
+		2	if there isn't another page, and all PAGE_SIZE bytes in page are used.
+		3/3-8	free to signal other things, because are used by FAT
+		3-(FAT_END+1)		free to signal other things, because are used by FAT
 
 
 *********************************************************
@@ -93,4 +110,5 @@ file name can be pointed to by another pointer in the files directory entry (2 b
 for 8kiB of memory, a FAT entry can be increased to 2 bytes - which would allow for up to
 	 1MB with 16 bytes pages, 4MB with 64 bytes pages, and and 32MB with 512 bytes pages.
 	
+page size maximum 256 bytes. if FAT is 0 then free, 1 then page is full, 2 then PAGE_SIZE-1, 3 then last 2 bytes indicate amount of data in that page. 
 
